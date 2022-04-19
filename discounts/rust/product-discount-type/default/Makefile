@@ -1,6 +1,4 @@
 build_wasm:
-	cd rust_script && \
+	mkdir -p build/ && \
 	cargo build --release --target "wasm32-wasi" && \
-	mkdir -p ../build && \
-	cp target/wasm32-wasi/release/*.wasm ../build/index.wasm && \
-	cd -
+	cp target/wasm32-wasi/release/*.wasm ./build/index.wasm

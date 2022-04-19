@@ -3,20 +3,17 @@ version: '2'
 configuration:
   type: object
   fields:
-    percentage_off:
-      type: number_integer
+    value:
+      type: number_decimal
       name: Percentage off
       validations:
       - name: min
         value: "0"
       - name: max
         value: "100"
-    excluded_variant_ids:
+    excluded_variant_gids:
       type: array
-      name: Excluded Product Variant IDs
+      name: Excluded Product Variants
       elementType:
-        type: number_integer
-        name: Product Variant ID
-        validations:
-        - name: min
-          value: "0"
+        type: variant_reference
+        name: Product Variant

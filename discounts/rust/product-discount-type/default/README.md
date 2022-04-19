@@ -1,13 +1,10 @@
-# Building the Rust script to WASM
+### Prerequisites
 
-## Dependencies
-* Rust
+* [Install Rust](https://www.rust-lang.org/tools/install)
+* Add `wasm32-wasi` target: `rustup target add wasm32-wasi`
 
-### Install Rust
+### Build
 
-https://www.rust-lang.org/tools/install
-
-## Building the script
-This builds the rust package to wasm and will then copy the wasm file to the root directory as `script.wasm`.
-
-`make`
+```
+make
+```
