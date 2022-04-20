@@ -109,7 +109,7 @@ mod tests {
             },
             "configuration": {
                 "value": null,
-                "excluded_variant_gids": null,
+                "excluded_variant_gids": null
             }
         }
         "#;
