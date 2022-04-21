@@ -1,0 +1,9 @@
+mutation Output(
+  $discounts: [Discount!]!
+  $discount_application_strategy: DiscountApplicationStrategy!
+) {
+  outputDiscounts(
+    discounts: $discounts
+    discountApplicationStrategy: $discount_application_strategy
+  )
+}

@@ -127,5 +127,5 @@ input Value {
 
 enum ValueType {
   FIXED_AMOUNT
-  percentage
+  PERCENTAGE
 }

@@ -91,9 +91,9 @@ type MerchandiseDiscountMutationRoot {
 }
 
 input Discount {
-  targets: [ProductVariantTarget!]!
+  targets: [Target!]!
   value: Value!
-  conditions: [ProductCondition!]
+  conditions: [Condition!]
   message: String
 }
 
@@ -102,21 +102,27 @@ enum DiscountApplicationStrategy {
   maximum
 }
 
+"""
 input ProductVariantTarget {
   targetType: TargetType!
   id: Int!
   quantity: Int
 }
+input OrderSubtotalTarget {
+  targetType: TargetType!
+  excludedVariantIds: [Int!]
+}
+"""
+input Target {
+  targetType: TargetType!
+  id: Int
+  quantity: Int
+  excludedVariantIds: [Int!]
+}
 
 enum TargetType {
   product_variant
-}
-
-input ProductCondition {
-  targetType: TargetType!
-  ids: [Int!]!
-  minimumAmount: Float
-  minimumQuantity: Int
+  ORDER_SUBTOTAL
 }
 
 input Value {
@@ -129,3 +135,29 @@ enum ValueType {
   FIXED_AMOUNT
   PERCENTAGE
 }
+
+"""
+input ProductMinimumSubtotal {
+  targetType: TargetType! # PRODUCT_VARIANT
+  ids: [Int!]!
+  minimumAmount: Float!
+}
+input ProductMinimumQuantity {
+  targetType: TargetType! # PRODUCT_VARIANT
+  ids: [Int!]!
+  minimumQuantity: Int!
+}
+input OrderMinimumSubtotal {
+  targetType: TargetType! # ORDER_SUBTOTAL
+  excludedVariantIds: [Int!]!
+  minimumAmount: Int!
+}
+"""
+input Condition {
+  targetType: TargetType!
+  ids: [Int!]
+  excludedVariantIds: [Int!]
+  minimumAmount: Float
+  minimumQuantity: Int
+}
+
