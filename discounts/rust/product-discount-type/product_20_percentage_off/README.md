@@ -36,7 +36,7 @@ enum ValueType {
       "conditions": null,
       "targets": [
         {
-          "targetType": "product_variant",
+          "targetType": "PRODUCT_VARIANT",
           "id": 1,
           "quantity": null
         }
@@ -47,6 +47,6 @@ enum ValueType {
       }
     }
   ],
-  "discount_application_strategy": "first"
+  "discount_application_strategy": "FIRST"
 }
 ```

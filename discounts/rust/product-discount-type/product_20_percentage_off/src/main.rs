@@ -135,8 +135,8 @@ mod tests {
                     "message": "50% off",
                     "conditions": null,
                     "targets": [
-                        { "targetType": "product_variant", "id": 0, "quantity": null },
-                        { "targetType": "product_variant", "id": 1, "quantity": null }
+                        { "targetType": "PRODUCT_VARIANT", "id": 0, "quantity": null },
+                        { "targetType": "PRODUCT_VARIANT", "id": 1, "quantity": null }
                     ],
                     "value": {
                         "type": "PERCENTAGE",
@@ -144,7 +144,7 @@ mod tests {
                         "appliesToEachItem": null
                     }
                 }],
-                "discount_application_strategy": "first"
+                "discount_application_strategy": "FIRST"
             }
         "#;
 
@@ -166,8 +166,8 @@ mod tests {
                     "message": "10% off",
                     "conditions": null,
                     "targets": [
-                        { "targetType": "product_variant", "id": 0, "quantity": null },
-                        { "targetType": "product_variant", "id": 1, "quantity": null }
+                        { "targetType": "PRODUCT_VARIANT", "id": 0, "quantity": null },
+                        { "targetType": "PRODUCT_VARIANT", "id": 1, "quantity": null }
                     ],
                     "value": {
                         "type": "PERCENTAGE",
@@ -175,7 +175,7 @@ mod tests {
                         "appliesToEachItem": null
                     }
                 }],
-                "discount_application_strategy": "first"
+                "discount_application_strategy": "FIRST"
             }
         "#;
 
@@ -197,7 +197,7 @@ mod tests {
                     "message": "50% off",
                     "conditions": null,
                     "targets": [
-                        { "targetType": "product_variant", "id": 1, "quantity": null }
+                        { "targetType": "PRODUCT_VARIANT", "id": 1, "quantity": null }
                     ],
                     "value": {
                         "type": "PERCENTAGE",
@@ -205,7 +205,7 @@ mod tests {
                         "appliesToEachItem": null
                     }
                 }],
-                "discount_application_strategy": "first"
+                "discount_application_strategy": "FIRST"
             }
         "#;
 

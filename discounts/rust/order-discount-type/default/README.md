@@ -58,7 +58,7 @@ output
       "message": "5% off order subtotal"
     }
   ],
-  "discount_application_strategy": "first"
+  "discount_application_strategy": "FIRST"
 }
 ```
 

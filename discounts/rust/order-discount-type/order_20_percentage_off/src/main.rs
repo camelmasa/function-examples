@@ -146,7 +146,7 @@ mod tests {
                         "appliesToEachItem": null
                     }
                 }],
-                "discount_application_strategy": "first"
+                "discount_application_strategy": "FIRST"
             }
         "#;
 
@@ -179,7 +179,7 @@ mod tests {
                         "appliesToEachItem": null
                     }
                 }],
-                "discount_application_strategy": "first"
+                "discount_application_strategy": "FIRST"
             }
         "#;
 
@@ -212,7 +212,7 @@ mod tests {
                         "appliesToEachItem": null
                     }
                 }],
-                "discount_application_strategy": "first"
+                "discount_application_strategy": "FIRST"
             }
         "#;
 

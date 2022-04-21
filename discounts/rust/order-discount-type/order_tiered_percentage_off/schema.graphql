@@ -98,8 +98,8 @@ input Discount {
 }
 
 enum DiscountApplicationStrategy {
-  first
-  maximum
+  FIRST
+  MAXIMUM
 }
 
 """
@@ -121,7 +121,7 @@ input Target {
 }
 
 enum TargetType {
-  product_variant
+  PRODUCT_VARIANT
   ORDER_SUBTOTAL
 }
 

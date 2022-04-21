@@ -34,7 +34,7 @@ enum ValueType {
     {
       "targets": [
         {
-          "targetType": "product_variant",
+          "targetType": "PRODUCT_VARIANT",
           "id": 1,
           "quantity": null
         }
@@ -48,7 +48,7 @@ enum ValueType {
       "message": "$5 off"
     }
   ],
-  "discount_application_strategy": "first"
+  "discount_application_strategy": "FIRST"
 }
 ```
 

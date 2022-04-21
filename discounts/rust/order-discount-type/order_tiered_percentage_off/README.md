@@ -115,7 +115,7 @@ output
       "message": "Spend $100 Get 10% off"
     }
   ],
-  "discount_application_strategy": "first"
+  "discount_application_strategy": "FIRST"
 }
 ```
 
