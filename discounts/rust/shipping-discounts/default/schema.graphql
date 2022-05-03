@@ -1,0 +1,165 @@
+schema {
+  query: DeliveryDiscountRoot
+  mutation: DeliveryDiscountMutationRoot
+}
+
+type Address {
+  city: String
+  countryCode: String
+  phone: String
+  poBox: Boolean!
+  provinceCode: String
+  zip: String
+}
+
+type Customer {
+  acceptsMarketing: Boolean
+  email: String
+  id: Int!
+  orderCount: Int
+  phone: String
+  tags: [String!]
+  totalSpent: Money
+}
+
+type DeliveryLineWithStrategy {
+  destination: Address
+  index: Int
+  price: Money!
+  strategy: DeliveryStrategy!
+  subscription: Boolean
+}
+
+type DeliveryStrategy {
+  code: String
+  name: String
+  source: String
+}
+
+type DeliveryDiscountRoot {
+  customer: Customer
+  deliveryLines: [DeliveryLineWithStrategy!]
+  locale: String
+  merchandiseLines: [MerchandiseLine!]
+}
+
+type MerchandiseLine {
+  index: Int
+  price: Money!
+  properties: [Property!]
+  quantity: Int
+  sellingPlan: SellingPlan
+  variant: Variant
+  weight: Int
+}
+
+type Money {
+  currency: String!
+  subunits: UnsignedInt64!
+}
+
+type Product {
+  giftCard: Boolean
+  id: Int!
+  tags: [String!]
+  title: String
+  type: String
+  vendor: String
+}
+
+type Property {
+  key: String!
+  value: String!
+}
+
+type SellingPlan {
+  id: Int!
+}
+
+"""
+Unsigned integer of up to 64 bits, encoded as a msgpack unsinged integer.
+"""
+scalar UnsignedInt64
+
+type Variant {
+  compareAtPrice: Money
+  id: Int!
+  product: Product
+  sku: String
+  title: String
+}
+
+# types below are not in the schema yet but should be added as part of https://github.com/Shopify/script-service/issues/4565
+
+type DeliveryDiscountMutationRoot {
+  outputDiscounts(
+    discounts: [Discount!]!
+    discount_application_strategy: DiscountApplicationStrategy!
+  ): Boolean
+}
+
+input Discount {
+  targets: [Target!]!
+  value: Value!
+  conditions: [Condition!]
+  message: String
+}
+
+enum DiscountApplicationStrategy {
+  FIRST
+  MAXIMUM
+}
+
+"""
+input ShippingLineTarget {
+  targetType: TargetType!
+  index: Int!
+}
+"""
+input Target {
+  targetType: TargetType!
+  index: Int!
+}
+
+enum TargetType {
+  PRODUCT_VARIANT
+  ORDER_SUBTOTAL
+  SHIPPING_LINE
+}
+
+input Value {
+  type: ValueType!
+  value: Float!
+  appliesToEachItem: Boolean
+}
+
+enum ValueType {
+  FIXED_AMOUNT
+  PERCENTAGE
+}
+
+"""
+input ProductMinimumSubtotal {
+  targetType: TargetType! # PRODUCT_VARIANT
+  ids: [Int!]!
+  minimumAmount: Float!
+}
+input ProductMinimumQuantity {
+  targetType: TargetType! # PRODUCT_VARIANT
+  ids: [Int!]!
+  minimumQuantity: Int!
+}
+input OrderMinimumSubtotal {
+  targetType: TargetType! # ORDER_SUBTOTAL
+  excludedVariantIds: [Int!]!
+  minimumAmount: Int!
+}
+"""
+input Condition {
+  targetType: TargetType!
+  ids: [Int!]
+  excludedVariantIds: [Int!]
+  minimumAmount: Float
+  minimumQuantity: Int
+}
+
