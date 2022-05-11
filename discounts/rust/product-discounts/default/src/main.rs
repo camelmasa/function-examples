@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use graphql_client::GraphQLQuery;
 
+type UnsignedInt64 = u64;
+type Void = ();
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",
@@ -40,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn script(payload: Payload) -> Result<output::Variables, Box<dyn std::error::Error>> {
+fn script(payload: Payload) -> Result<output::ScriptOutput, Box<dyn std::error::Error>> {
     const DEFAULT_VALUE: f64 = 50.0;
 
     let (input, config) = (payload.input, payload.configuration);
@@ -58,7 +61,7 @@ fn script(payload: Payload) -> Result<output::Variables, Box<dyn std::error::Err
 fn targets(
     merchandise_lines: &Vec<input::InputMerchandiseLines>,
     excluded_variant_gids: &[String],
-) -> Vec<output::ProductVariantTarget> {
+) -> Vec<output::Target> {
     let excluded_variant_ids: Vec<u64> = excluded_variant_gids
         .iter()
         .filter_map(|gid| gid.split('/').last().map(|id| id.parse().unwrap()))
@@ -68,10 +71,11 @@ fn targets(
         .iter()
         .filter_map(|line| match line.variant {
             Some(ref variant) if !excluded_variant_ids.contains(&(variant.id as u64)) => {
-                Some(output::ProductVariantTarget {
-                    target_type: output::TargetType::ProductVariant,
-                    id: variant.id,
-                    quantity: None,
+                Some(output::Target {
+                    productVariant: Some(output::ProductVariantTarget {
+                        id: variant.id,
+                        quantity: None,
+                    }),
                 })
             }
             _ => None,
@@ -79,18 +83,18 @@ fn targets(
         .collect()
 }
 
-fn build_output(value: f64, targets: Vec<output::ProductVariantTarget>) -> output::Variables {
-    output::Variables {
+fn build_output(value: f64, targets: Vec<output::Target>) -> output::ScriptOutput {
+    output::ScriptOutput {
         discounts: vec![output::Discount {
             message: Some(format!("{}% off", value)),
             conditions: None,
             targets,
             value: output::Value {
-                type_: output::ValueType::Percentage,
-                value,
+                percentage: Some(output::Percentage { value }),
+                fixedAmount: None,
             },
         }],
-        discount_application_strategy: output::DiscountApplicationStrategy::First,
+        discountApplicationStrategy: output::DiscountApplicationStrategy::First,
     }
 }
 
@@ -134,15 +138,15 @@ mod tests {
                     "message": "50% off",
                     "conditions": null,
                     "targets": [
-                        { "target_type": "product_variant", "id": 0, "quantity": null },
-                        { "target_type": "product_variant", "id": 1, "quantity": null }
+                        { "productVariant": { "id": 0, "quantity": null } },
+                        { "productVariant": { "id": 1, "quantity": null } }
                     ],
                     "value": {
-                        "type": "percentage",
-                        "value": 50.0
+                        "percentage": { "value": 50.0 },
+                        "fixedAmount": null
                     }
                 }],
-                "discount_application_strategy": "first"
+                "discountApplicationStrategy": "FIRST"
             }
         "#;
 
@@ -164,15 +168,15 @@ mod tests {
                     "message": "10% off",
                     "conditions": null,
                     "targets": [
-                        { "target_type": "product_variant", "id": 0, "quantity": null },
-                        { "target_type": "product_variant", "id": 1, "quantity": null }
+                        { "productVariant": { "id": 0, "quantity": null } },
+                        { "productVariant": { "id": 1, "quantity": null } }
                     ],
                     "value": {
-                        "type": "percentage",
-                        "value": 10.0
+                        "percentage": { "value": 10.0 },
+                        "fixedAmount": null
                     }
                 }],
-                "discount_application_strategy": "first"
+                "discountApplicationStrategy": "FIRST"
             }
         "#;
 
@@ -194,14 +198,14 @@ mod tests {
                     "message": "50% off",
                     "conditions": null,
                     "targets": [
-                        { "target_type": "product_variant", "id": 1, "quantity": null }
+                        { "productVariant": { "id": 1, "quantity": null } }
                     ],
                     "value": {
-                        "type": "percentage",
-                        "value": 50.0
+                        "percentage": { "value": 50.0 },
+                        "fixedAmount": null
                     }
                 }],
-                "discount_application_strategy": "first"
+                "discountApplicationStrategy": "FIRST"
             }
         "#;
 

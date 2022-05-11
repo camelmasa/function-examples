@@ -1,7 +1,12 @@
 schema {
   query: MerchandiseDiscountRoot
-  mutation: MerchandiseDiscountMutationRoot
+  mutation: ProductDiscountsMutationRoot
 }
+
+"""
+Exactly one field of input must be provided, and all others omitted.
+"""
+directive @oneOf on INPUT_OBJECT
 
 type Address {
   city: String
@@ -12,10 +17,30 @@ type Address {
   zip: String
 }
 
-type Customer {
+input Condition @oneOf {
+  productMinimumQuantity: ProductMinimumQuantity
+  productMinimumSubtotal: ProductMinimumSubtotal
+}
+
+type Customer implements HasMetafields {
   acceptsMarketing: Boolean
   email: String
-  id: Int!
+  id: UnsignedInt64!
+
+  """
+  Returns a metafield by namespace and key that belongs to the resource.
+  """
+  metafield(
+    """
+    The key for the metafield.
+    """
+    key: String!
+
+    """
+    The namespace for the metafield.
+    """
+    namespace: String!
+  ): Metafield
   orderCount: Int
   phone: String
   tags: [String!]
@@ -27,6 +52,56 @@ type DeliveryLine {
   index: Int
   subscription: Boolean
 }
+
+input Discount {
+  conditions: [Condition!]
+  message: String
+  targets: [Target!]!
+  value: Value!
+}
+
+enum DiscountApplicationStrategy {
+  FIRST
+  MAXIMUM
+}
+
+input FixedAmount {
+  appliesToEachItem: Boolean
+  value: Float!
+}
+
+interface HasMetafields {
+  """
+  Returns a metafield by namespace and key that belongs to the resource.
+  """
+  metafield(
+    """
+    The key for the metafield.
+    """
+    key: String!
+
+    """
+    The namespace for the metafield.
+    """
+    namespace: String!
+  ): Metafield
+}
+
+"""
+A [JSON](https://www.json.org/json-en.html) object.
+Example value:
+`{
+  "product": {
+    "id": "gid://shopify/Product/1346443542550",
+    "title": "White T-shirt",
+    "options": [{
+      "name": "Size",
+      "values": ["M", "L"]
+    }]
+  }
+}`
+"""
+scalar JSON
 
 type MerchandiseDiscountRoot {
   customer: Customer
@@ -45,18 +120,74 @@ type MerchandiseLine {
   weight: Int
 }
 
+type Metafield {
+  type: String!
+  value: JSON!
+}
+
 type Money {
   currency: String!
   subunits: UnsignedInt64!
 }
 
-type Product {
+input Percentage {
+  value: Float!
+}
+
+type Product implements HasMetafields {
   giftCard: Boolean
-  id: Int!
+  id: UnsignedInt64!
+
+  """
+  Returns a metafield by namespace and key that belongs to the resource.
+  """
+  metafield(
+    """
+    The key for the metafield.
+    """
+    key: String!
+
+    """
+    The namespace for the metafield.
+    """
+    namespace: String!
+  ): Metafield
   tags: [String!]
   title: String
   type: String
   vendor: String
+}
+
+"""
+The root mutation for product discount type API.
+"""
+type ProductDiscountsMutationRoot {
+  """
+  Handle the output of the script.
+  """
+  outputDiscounts(
+    """
+    The output of the script.
+    """
+    scriptOutput: ScriptOutput!
+  ): Void!
+}
+
+input ProductMinimumQuantity {
+  ids: [UnsignedInt64!]!
+  minimum_quantity: Int!
+  target_type: TargetType!
+}
+
+input ProductMinimumSubtotal {
+  ids: [UnsignedInt64!]!
+  minimum_amount: Float!
+  target_type: TargetType!
+}
+
+input ProductVariantTarget {
+  id: UnsignedInt64!
+  quantity: Int
 }
 
 type Property {
@@ -64,67 +195,62 @@ type Property {
   value: String!
 }
 
+"""
+The output of a product discount type script.
+"""
+input ScriptOutput {
+  discounts: [Discount!]!
+  discountApplicationStrategy: DiscountApplicationStrategy!
+}
+
 type SellingPlan {
-  id: Int!
+  id: UnsignedInt64!
+}
+
+input Target @oneOf {
+  productVariant: ProductVariantTarget
+}
+
+enum TargetType {
+  ORDER_SUBTOTAL
+  PRODUCT_VARIANT
 }
 
 """
-Unsigned integer of up to 64 bits, encoded as a msgpack unsinged integer.
+Unsigned integer of up to 64 bit, encoded as a number (not a string).
+Example value: `1099511627776`
 """
 scalar UnsignedInt64
 
-type Variant {
+input Value @oneOf {
+  fixedAmount: FixedAmount
+  percentage: Percentage
+}
+
+type Variant implements HasMetafields {
   compareAtPrice: Money
-  id: Int!
+  id: UnsignedInt64!
+
+  """
+  Returns a metafield by namespace and key that belongs to the resource.
+  """
+  metafield(
+    """
+    The key for the metafield.
+    """
+    key: String!
+
+    """
+    The namespace for the metafield.
+    """
+    namespace: String!
+  ): Metafield
   product: Product
   sku: String
   title: String
 }
 
-# types below are not in the schema yet but should be added as part of https://github.com/Shopify/script-service/issues/4565
-
-type MerchandiseDiscountMutationRoot {
-  outputDiscounts(
-    discounts: [Discount!]!
-    discount_application_strategy: DiscountApplicationStrategy!
-  ): Boolean
-}
-
-input Discount {
-  message: String
-  conditions: [ProductCondition!]
-  targets: [ProductVariantTarget!]!
-  value: Value!
-}
-
-enum DiscountApplicationStrategy {
-  first
-  maximum
-}
-
-input ProductCondition {
-  target_type: TargetType!
-  ids: [Int!]!
-  minimum_amount: Float
-  minimum_quantity: Int
-}
-
-input ProductVariantTarget {
-  target_type: TargetType!
-  id: Int!
-  quantity: Int
-}
-
-input Value {
-  type: ValueType!
-  value: Float!
-}
-
-enum ValueType {
-  fixed
-  percentage
-}
-
-enum TargetType {
-  product_variant
-}
+"""
+A void type that can be used to return a null value from a mutation.
+"""
+scalar Void
