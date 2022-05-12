@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use graphql_client::GraphQLQuery;
 
+type UnsignedInt64 = u64;
+type Void = ();
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",
@@ -21,19 +24,9 @@ struct Input;
 struct Output;
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Config {
     value: Option<String>,
-}
-
-impl Config {
-    const DEFAULT_VALUE: f64 = 20.0;
-
-    fn get_value(&self) -> f64 {
-        match &self.value {
-            Some(value) => value.parse().unwrap(),
-            _ => Self::DEFAULT_VALUE,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -50,43 +43,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn script(payload: Payload) -> Result<output::Variables, Box<dyn std::error::Error>> {
-    let (input, config) = (payload.input, payload.configuration);
-    let delivery_lines = &input.delivery_lines.unwrap_or_default();
+fn script(payload: Payload) -> Result<output::ScriptOutput, Box<dyn std::error::Error>> {
+    const DEFAULT_VALUE: f64 = 50.0;
 
+    let (input, config) = (payload.input, payload.configuration);
+    let value: f64 = if let Some(value) = config.value {
+        value.parse()?
+    } else {
+        DEFAULT_VALUE
+    };
+    let delivery_lines = &input.delivery_lines.unwrap_or_default();
     let targets = delivery_lines
         .iter()
-        .filter_map(|delivery_line| {
-            if let Some(index) = delivery_line.index {
-                Some(output::Target {
-                    targetType: output::TargetType::ShippingLine,
-                    index,
-                })
-            } else {
-                None
-            }
+        .map(|line| output::Target {
+            shippingLine: Some(output::ShippingLineTarget { index: line.index }),
         })
         .collect();
-    Ok(output::Variables {
+    return Ok(build_output(value, targets));
+}
+
+fn build_output(value: f64, targets: Vec<output::Target>) -> output::ScriptOutput {
+    output::ScriptOutput {
         discounts: vec![output::Discount {
-            message: Some(format!("{}% off shipping", config.get_value())),
+            message: Some(format!("{}% off", value)),
             conditions: None,
             targets,
             value: output::Value {
-                type_: output::ValueType::Percentage,
-                value: config.get_value(),
-                appliesToEachItem: None,
+                percentage: Some(output::Percentage { value }),
+                fixedAmount: None,
             },
         }],
-        discount_application_strategy: output::DiscountApplicationStrategy::First,
-    })
+        discountApplicationStrategy: output::DiscountApplicationStrategy::First,
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn payload(config: Option<Config>) -> Payload {
+    fn payload(configuration: Config) -> Payload {
         let input = r#"
         {
             "input": {
@@ -101,43 +96,32 @@ mod tests {
         }
         "#;
         let default_payload: Payload = serde_json::from_str(&input).unwrap();
-
-        match config {
-            Some(configuration) => Payload {
-                configuration,
-                ..default_payload
-            },
-            None => default_payload,
+        Payload {
+            configuration,
+            ..default_payload
         }
     }
 
     #[test]
     fn test_discount_with_default_value() {
-        let payload = payload(None);
+        let payload = payload(Config { value: None });
         let output = serde_json::json!(script(payload).unwrap());
 
         let expected_json = r#"
             {
                 "discounts": [{
-                    "message": "20% off shipping",
+                    "message": "50% off",
                     "conditions": null,
                     "targets": [
-                        {
-                            "targetType": "SHIPPING_LINE",
-                            "index": 0
-                        },
-                        {
-                            "targetType": "SHIPPING_LINE",
-                            "index": 1
-                        }
+                        { "shippingLine": { "index": 0 } },
+                        { "shippingLine": { "index": 1 } }
                     ],
                     "value": {
-                        "type": "PERCENTAGE",
-                        "value": 20.0,
-                        "appliesToEachItem": null
+                        "percentage": { "value": 50.0 },
+                        "fixedAmount": null
                     }
                 }],
-                "discount_application_strategy": "FIRST"
+                "discountApplicationStrategy": "FIRST"
             }
         "#;
 
@@ -147,33 +131,26 @@ mod tests {
 
     #[test]
     fn test_discount_with_value() {
-        let payload = payload(Some(Config {
-            value: Some("10.0".to_string()),
-        }));
+        let payload = payload(Config {
+            value: Some("10".to_string()),
+        });
         let output = serde_json::json!(script(payload).unwrap());
 
         let expected_json = r#"
             {
                 "discounts": [{
-                    "message": "10% off shipping",
+                    "message": "10% off",
                     "conditions": null,
                     "targets": [
-                        {
-                            "targetType": "SHIPPING_LINE",
-                            "index": 0
-                        },
-                        {
-                            "targetType": "SHIPPING_LINE",
-                            "index": 1
-                        }
+                        { "shippingLine": { "index": 0 } },
+                        { "shippingLine": { "index": 1 } }
                     ],
                     "value": {
-                        "type": "PERCENTAGE",
-                        "value": 10.0,
-                        "appliesToEachItem": null
+                        "percentage": { "value": 10.0 },
+                        "fixedAmount": null
                     }
                 }],
-                "discount_application_strategy": "FIRST"
+                "discountApplicationStrategy": "FIRST"
             }
         "#;
 

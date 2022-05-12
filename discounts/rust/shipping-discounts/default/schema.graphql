@@ -1,7 +1,12 @@
 schema {
   query: DeliveryDiscountRoot
-  mutation: DeliveryDiscountMutationRoot
+  mutation: ShippingDiscountsMutationRoot
 }
+
+"""
+Exactly one field of input must be provided, and all others omitted.
+"""
+directive @oneOf on INPUT_OBJECT
 
 type Address {
   city: String
@@ -12,19 +17,47 @@ type Address {
   zip: String
 }
 
-type Customer {
+input Condition @oneOf {
+  orderMinimumSubtotal: OrderMinimumSubtotal
+  productMinimumQuantity: ProductMinimumQuantity
+  productMinimumSubtotal: ProductMinimumSubtotal
+}
+
+type Customer implements HasMetafields {
   acceptsMarketing: Boolean
   email: String
-  id: Int!
+  id: UnsignedInt64!
+
+  """
+  Returns a metafield by namespace and key that belongs to the resource.
+  """
+  metafield(
+    """
+    The key for the metafield.
+    """
+    key: String!
+
+    """
+    The namespace for the metafield.
+    """
+    namespace: String!
+  ): Metafield
   orderCount: Int
   phone: String
   tags: [String!]
   totalSpent: Money
 }
 
+type DeliveryDiscountRoot {
+  customer: Customer
+  deliveryLines: [DeliveryLineWithStrategy!]
+  locale: String
+  merchandiseLines: [MerchandiseLine!]
+}
+
 type DeliveryLineWithStrategy {
   destination: Address
-  index: Int
+  index: Int!
   price: Money!
   strategy: DeliveryStrategy!
   subscription: Boolean
@@ -36,12 +69,55 @@ type DeliveryStrategy {
   source: String
 }
 
-type DeliveryDiscountRoot {
-  customer: Customer
-  deliveryLines: [DeliveryLineWithStrategy!]
-  locale: String
-  merchandiseLines: [MerchandiseLine!]
+input Discount {
+  conditions: [Condition!]
+  message: String
+  targets: [Target!]!
+  value: Value!
 }
+
+enum DiscountApplicationStrategy {
+  FIRST
+  MAXIMUM
+}
+
+input FixedAmount {
+  appliesToEachItem: Boolean
+  value: Float!
+}
+
+interface HasMetafields {
+  """
+  Returns a metafield by namespace and key that belongs to the resource.
+  """
+  metafield(
+    """
+    The key for the metafield.
+    """
+    key: String!
+
+    """
+    The namespace for the metafield.
+    """
+    namespace: String!
+  ): Metafield
+}
+
+"""
+A [JSON](https://www.json.org/json-en.html) object.
+Example value:
+`{
+  "product": {
+    "id": "gid://shopify/Product/1346443542550",
+    "title": "White T-shirt",
+    "options": [{
+      "name": "Size",
+      "values": ["M", "L"]
+    }]
+  }
+}`
+"""
+scalar JSON
 
 type MerchandiseLine {
   index: Int
@@ -53,18 +129,60 @@ type MerchandiseLine {
   weight: Int
 }
 
+type Metafield {
+  type: String!
+  value: JSON!
+}
+
 type Money {
   currency: String!
   subunits: UnsignedInt64!
 }
 
-type Product {
+input OrderMinimumSubtotal {
+  excludedVariantIds: [UnsignedInt64!]!
+  minimumAmount: Float!
+  targetType: TargetType!
+}
+
+input Percentage {
+  value: Float!
+}
+
+type Product implements HasMetafields {
   giftCard: Boolean
-  id: Int!
+  id: UnsignedInt64!
+
+  """
+  Returns a metafield by namespace and key that belongs to the resource.
+  """
+  metafield(
+    """
+    The key for the metafield.
+    """
+    key: String!
+
+    """
+    The namespace for the metafield.
+    """
+    namespace: String!
+  ): Metafield
   tags: [String!]
   title: String
   type: String
   vendor: String
+}
+
+input ProductMinimumQuantity {
+  ids: [UnsignedInt64!]!
+  minimumQuantity: UnsignedInt64!
+  targetType: TargetType!
+}
+
+input ProductMinimumSubtotal {
+  ids: [UnsignedInt64!]!
+  minimumAmount: Float!
+  targetType: TargetType!
 }
 
 type Property {
@@ -72,94 +190,81 @@ type Property {
   value: String!
 }
 
+"""
+The output of a shipping discount type script.
+"""
+input ScriptOutput {
+  discountApplicationStrategy: DiscountApplicationStrategy!
+  discounts: [Discount!]!
+}
+
 type SellingPlan {
-  id: Int!
+  id: UnsignedInt64!
 }
 
 """
-Unsigned integer of up to 64 bits, encoded as a msgpack unsinged integer.
+The root mutation for shipping discount type API.
+"""
+type ShippingDiscountsMutationRoot {
+  """
+  Handle the output of the script.
+  """
+  outputDiscounts(
+    """
+    The output of the script.
+    """
+    scriptOutput: ScriptOutput!
+  ): Void!
+}
+
+input ShippingLineTarget {
+  index: Int!
+}
+
+input Target @oneOf {
+  shippingLine: ShippingLineTarget
+}
+
+enum TargetType {
+  ORDER_SUBTOTAL
+  PRODUCT_VARIANT
+}
+
+"""
+Unsigned integer of up to 64 bit, encoded as a number (not a string).
+Example value: `1099511627776`
 """
 scalar UnsignedInt64
 
-type Variant {
+input Value @oneOf {
+  fixedAmount: FixedAmount
+  percentage: Percentage
+}
+
+type Variant implements HasMetafields {
   compareAtPrice: Money
-  id: Int!
+  id: UnsignedInt64!
+
+  """
+  Returns a metafield by namespace and key that belongs to the resource.
+  """
+  metafield(
+    """
+    The key for the metafield.
+    """
+    key: String!
+
+    """
+    The namespace for the metafield.
+    """
+    namespace: String!
+  ): Metafield
   product: Product
   sku: String
   title: String
 }
 
-# types below are not in the schema yet but should be added as part of https://github.com/Shopify/script-service/issues/4565
-
-type DeliveryDiscountMutationRoot {
-  outputDiscounts(
-    discounts: [Discount!]!
-    discount_application_strategy: DiscountApplicationStrategy!
-  ): Boolean
-}
-
-input Discount {
-  targets: [Target!]!
-  value: Value!
-  conditions: [Condition!]
-  message: String
-}
-
-enum DiscountApplicationStrategy {
-  FIRST
-  MAXIMUM
-}
-
 """
-input ShippingLineTarget {
-  targetType: TargetType!
-  index: Int!
-}
+A void type that can be used to return a null value from a mutation.
 """
-input Target {
-  targetType: TargetType!
-  index: Int!
-}
-
-enum TargetType {
-  PRODUCT_VARIANT
-  ORDER_SUBTOTAL
-  SHIPPING_LINE
-}
-
-input Value {
-  type: ValueType!
-  value: Float!
-  appliesToEachItem: Boolean
-}
-
-enum ValueType {
-  FIXED_AMOUNT
-  PERCENTAGE
-}
-
-"""
-input ProductMinimumSubtotal {
-  targetType: TargetType! # PRODUCT_VARIANT
-  ids: [Int!]!
-  minimumAmount: Float!
-}
-input ProductMinimumQuantity {
-  targetType: TargetType! # PRODUCT_VARIANT
-  ids: [Int!]!
-  minimumQuantity: Int!
-}
-input OrderMinimumSubtotal {
-  targetType: TargetType! # ORDER_SUBTOTAL
-  excludedVariantIds: [Int!]!
-  minimumAmount: Int!
-}
-"""
-input Condition {
-  targetType: TargetType!
-  ids: [Int!]
-  excludedVariantIds: [Int!]
-  minimumAmount: Float
-  minimumQuantity: Int
-}
-
+scalar Void

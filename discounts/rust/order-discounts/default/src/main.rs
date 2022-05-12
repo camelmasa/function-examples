@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use graphql_client::GraphQLQuery;
 
+type UnsignedInt64 = u64;
+type Void = ();
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",
@@ -20,39 +23,11 @@ struct Input;
 )]
 struct Output;
 
-type ID = i64;
-
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Config {
     value: Option<String>,
     excluded_variant_gids: Option<Vec<String>>,
-}
-
-impl Config {
-    const DEFAULT_VALUE: f64 = 20.0;
-
-    fn get_value(&self) -> f64 {
-        match &self.value {
-            Some(value) => value.parse().unwrap(),
-            _ => Self::DEFAULT_VALUE,
-        }
-    }
-
-    fn excluded_variant_ids(&self) -> Vec<ID> {
-        match &self.excluded_variant_gids {
-            Some(excluded_variant_gids) => excluded_variant_gids
-                .iter()
-                .map(Self::convert_gid_to_id)
-                .collect(),
-            _ => {
-                vec![]
-            }
-        }
-    }
-
-    fn convert_gid_to_id(gid: &String) -> ID {
-        gid.split('/').last().map(|id| id.parse().unwrap()).unwrap()
-    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -69,36 +44,52 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn script(payload: Payload) -> Result<output::Variables, Box<dyn std::error::Error>> {
-    let (_input, config) = (payload.input, payload.configuration);
-    // let merchandise_lines = &input.merchandise_lines.unwrap_or_default();
+fn script(payload: Payload) -> Result<output::ScriptOutput, Box<dyn std::error::Error>> {
+    const DEFAULT_VALUE: f64 = 50.0;
 
-    let targets = vec![output::Target {
-        targetType: output::TargetType::OrderSubtotal,
-        excludedVariantIds: Some(config.excluded_variant_ids()),
-        id: None,
-        quantity: None,
-    }];
-    Ok(output::Variables {
+    let (_input, config) = (payload.input, payload.configuration);
+    let value: f64 = if let Some(value) = config.value {
+        value.parse()?
+    } else {
+        DEFAULT_VALUE
+    };
+    let excluded_variant_gids = &config.excluded_variant_gids.unwrap_or_default();
+    let targets = vec![target(&excluded_variant_gids)];
+    return Ok(build_output(value, targets));
+}
+
+fn target(excluded_variant_gids: &[String]) -> output::Target {
+    output::Target {
+        orderSubtotal: Some(output::OrderSubtotalTarget {
+            excludedVariantIds: excluded_variant_gids
+                .iter()
+                .filter_map(|gid| gid.split('/').last().map(|id| id.parse().unwrap()))
+                .collect(),
+        }),
+        productVariant: None,
+    }
+}
+
+fn build_output(value: f64, targets: Vec<output::Target>) -> output::ScriptOutput {
+    output::ScriptOutput {
         discounts: vec![output::Discount {
-            message: Some(format!("{}% off order subtotal", config.get_value())),
+            message: Some(format!("{}% off", value)),
             conditions: None,
             targets,
             value: output::Value {
-                type_: output::ValueType::Percentage,
-                value: config.get_value(),
-                appliesToEachItem: None,
+                percentage: Some(output::Percentage { value }),
+                fixedAmount: None,
             },
         }],
-        discount_application_strategy: output::DiscountApplicationStrategy::First,
-    })
+        discountApplicationStrategy: output::DiscountApplicationStrategy::First,
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn payload(config: Option<Config>) -> Payload {
+    fn payload(configuration: Config) -> Payload {
         let input = r#"
         {
             "input": {
@@ -109,44 +100,40 @@ mod tests {
             },
             "configuration": {
                 "value": null,
-                "excluded_variant_gids": ["gid://shopify/ProductVariant/1", "gid://shopify/ProductVariant/2"]
+                "excludedVariantGids": null
             }
         }
         "#;
         let default_payload: Payload = serde_json::from_str(&input).unwrap();
-
-        match config {
-            Some(configuration) => Payload {
-                configuration,
-                ..default_payload
-            },
-            None => default_payload,
+        Payload {
+            configuration,
+            ..default_payload
         }
     }
 
     #[test]
     fn test_discount_with_default_value() {
-        let payload = payload(None);
+        let payload = payload(Config {
+            value: None,
+            excluded_variant_gids: None,
+        });
         let output = serde_json::json!(script(payload).unwrap());
 
         let expected_json = r#"
             {
                 "discounts": [{
-                    "message": "20% off order subtotal",
+                    "message": "50% off",
                     "conditions": null,
                     "targets": [{
-                        "targetType": "ORDER_SUBTOTAL",
-                        "excludedVariantIds": [1, 2],
-                        "id": null,
-                        "quantity": null
+                        "orderSubtotal": { "excludedVariantIds": [] },
+                        "productVariant": null
                     }],
                     "value": {
-                        "type": "PERCENTAGE",
-                        "value": 20.0,
-                        "appliesToEachItem": null
+                        "percentage": { "value": 50.0 },
+                        "fixedAmount": null
                     }
                 }],
-                "discount_application_strategy": "FIRST"
+                "discountApplicationStrategy": "FIRST"
             }
         "#;
 
@@ -156,30 +143,27 @@ mod tests {
 
     #[test]
     fn test_discount_with_value() {
-        let payload = payload(Some(Config {
-            value: Some("10.0".to_string()),
+        let payload = payload(Config {
+            value: Some("10".to_string()),
             excluded_variant_gids: None,
-        }));
+        });
         let output = serde_json::json!(script(payload).unwrap());
 
         let expected_json = r#"
             {
                 "discounts": [{
-                    "message": "10% off order subtotal",
+                    "message": "10% off",
                     "conditions": null,
                     "targets": [{
-                        "targetType": "ORDER_SUBTOTAL",
-                        "excludedVariantIds": [],
-                        "id": null,
-                        "quantity": null
+                        "orderSubtotal": { "excludedVariantIds": [] },
+                        "productVariant": null
                     }],
                     "value": {
-                        "type": "PERCENTAGE",
-                        "value": 10.0,
-                        "appliesToEachItem": null
+                        "percentage": { "value": 10.0 },
+                        "fixedAmount": null
                     }
                 }],
-                "discount_application_strategy": "FIRST"
+                "discountApplicationStrategy": "FIRST"
             }
         "#;
 
@@ -189,30 +173,27 @@ mod tests {
 
     #[test]
     fn test_discount_with_excluded_variant_gids() {
-        let payload = payload(Some(Config {
+        let payload = payload(Config {
             value: None,
             excluded_variant_gids: Some(vec!["gid://shopify/ProductVariant/0".to_string()]),
-        }));
+        });
         let output = serde_json::json!(script(payload).unwrap());
 
         let expected_json = r#"
             {
                 "discounts": [{
-                    "message": "20% off order subtotal",
+                    "message": "50% off",
                     "conditions": null,
                     "targets": [{
-                        "targetType": "ORDER_SUBTOTAL",
-                        "excludedVariantIds": [0],
-                        "id": null,
-                        "quantity": null
+                        "orderSubtotal": { "excludedVariantIds": [0] },
+                        "productVariant": null
                     }],
                     "value": {
-                        "type": "PERCENTAGE",
-                        "value": 20.0,
-                        "appliesToEachItem": null
+                        "percentage": { "value": 50.0 },
+                        "fixedAmount": null
                     }
                 }],
-                "discount_application_strategy": "FIRST"
+                "discountApplicationStrategy": "FIRST"
             }
         "#;
 
