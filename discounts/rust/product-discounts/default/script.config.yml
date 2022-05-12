@@ -11,7 +11,7 @@ configuration:
         value: "0"
       - name: max
         value: "100"
-    excluded_variant_gids:
+    excludedVariantGids:
       type: array
       name: Excluded Product Variants
       elementType:

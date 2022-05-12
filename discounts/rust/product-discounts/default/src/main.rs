@@ -24,6 +24,7 @@ struct Input;
 struct Output;
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Config {
     value: Option<String>,
     excluded_variant_gids: Option<Vec<String>>,
@@ -113,7 +114,7 @@ mod tests {
             },
             "configuration": {
                 "value": null,
-                "excluded_variant_gids": null
+                "excludedVariantGids": null
             }
         }
         "#;
